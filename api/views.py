@@ -183,14 +183,14 @@ class ProductView(APIView):
             serializer = ProductSerializer(products, many=True)
             return Response(serializer.data)
         else:
-            # If no ID or search query is provided, retrieve all products
+            # If no ID or search query is provided, retrieve all products and order by ID in descending order
             ids = request.GET.get('ids', '')
             if not ids:
-                products = Product.objects.all()
+                products = Product.objects.order_by('-id')
             else:
                 # If a comma-separated list of IDs is provided, retrieve those products
                 id_list = ids.split(',')
-                products = Product.objects.filter(pk__in=id_list)
+                products = Product.objects.filter(pk__in=id_list).order_by('-id')
             serializer = ProductSerializer(products, many=True)
             return Response(serializer.data)
         
