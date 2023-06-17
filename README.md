@@ -8,6 +8,9 @@ Overall, Yoummerce is a user-friendly and efficient e-commerce system that deliv
 
 
 for testing the applications from admin page "adding products, see orders, ...etc"
+
 user: admin
+
 password: 1234
+
 https://yoummercepremium.pythonanywhere.com/admin/
