@@ -13,16 +13,26 @@ urlpatterns = [
     path('users/<int:pk>/', views.UserDetailView.as_view(), name='user-detail'),
 
 
-    # products/?ids= || products/?q="name/s"
+    # Categories
+    path('categories/', views.categories_list_view, name='categories-list'),
+    # Categories
+
+
+
+    # products/?ids= || products/?q="name/s   ?q=منتج&category=اج"   ?min_sell_price=2&max_sell_price=22
     path('products/', views.ProductView.as_view(), name='product-list'),
+
+    #RATING
+    #if need to comment {"comment":"test"}
+    path('products/<int:product_id>/ratings/<int:user_id>/<int:rating>/', views.ProductRatingView.as_view()),
 
 
     # State
     path('states/', views.StateList.as_view(), name='state-list'),
 
     # see the cart item for the user
-    # update or create cart item {quantity:2} for ex
     path('cart/user/<int:user_id>/', views.CartView.as_view(), name='cart'),
+    # update or create cart item {quantity:2} for ex
     path('cart/user/<int:user_id>/product/<int:product_id>/var/<int:Var_id>/',
          views.CartItemView.as_view(), name='cart_item'),
     # delete cart item

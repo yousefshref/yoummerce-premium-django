@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Product, ProductImage, Cart, State, Order, CartItem, OrderItem, Var,Categories
+from .models import Product, ProductImage, Cart, State, Order, CartItem, OrderItem, Var, Categories, ProductRating
 from django.db.models import Sum
 
 
@@ -14,8 +14,8 @@ class ProductAdmin(admin.ModelAdmin):
     inlines = [VarInline,ProductImageInline]
     list_display = ['id', 'name', 'category','date_created']
     list_editable = ['name','category']
-    search_fields = ['name']
-    list_filter = ["date_created"]
+    search_fields = ['name', 'category__category']
+    list_filter = ["date_created", 'category']
 
 
 class VarAdmin(admin.ModelAdmin):
@@ -49,6 +49,7 @@ class VarAdmin(admin.ModelAdmin):
 admin.site.register(Product, ProductAdmin)
 admin.site.register(Var,VarAdmin)
 admin.site.register(Categories)
+admin.site.register(ProductRating)
 # PRODUCTS
 
 

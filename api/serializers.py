@@ -1,8 +1,9 @@
 from rest_framework import serializers
-from .models import State, Product, Var, ProductImage, Cart, CartItem, Order, OrderItem
+from .models import State, Product, Var, ProductImage, Cart, CartItem, Order, OrderItem, Categories, ProductRating
 from django.contrib.auth.models import User
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth import get_user_model
+
 
 
 class UserSerializerAll(serializers.ModelSerializer):
@@ -53,7 +54,7 @@ class VarSerializer(serializers.ModelSerializer):
     class Meta:
         model = Var
         fields = ['id',"product", 'Var_name', 'buy_price', 'sell_price', 'earning',
-                  'consumer_commission', 'stock', 'add_stock', 'remove_stock']
+                  'consumer_commission', 'stock', 'add_stock', 'remove_stock', 'befor_discount']
 
 
 class RelatedProductSerializer(serializers.ModelSerializer):
@@ -65,18 +66,55 @@ class RelatedProductSerializer(serializers.ModelSerializer):
         model = Product
         fields = ['id', 'name', 'description', 'category', 'images', 'Var']
 
+class ProductRatingSerializer(serializers.ModelSerializer):
+    user = serializers.CharField()
+
+    class Meta:
+        model = ProductRating
+        fields = ['id', 'user', 'rating', 'comment', 'reply', 'created_at']
+
 
 class ProductSerializer(serializers.ModelSerializer):
     Var = VarSerializer(many=True, read_only=True)
     images = ProductImageSerializer(many=True, read_only=True)
     category = serializers.CharField()
     related_products = RelatedProductSerializer(many=True, read_only=True)
+    ratings = serializers.SerializerMethodField()
+    average_rating = serializers.SerializerMethodField()
+
+
+    def get_average_rating(self, obj):
+        ratings = obj.productrating_set.all()
+        if ratings:
+            rating_sum = sum([rating.rating for rating in ratings])
+            return rating_sum / len(ratings)
+        else:
+            return 0
+
+    def get_ratings(self, obj):
+        ratings = obj.productrating_set.all()
+        serializer = ProductRatingSerializer(ratings, many=True)
+        return serializer.data
 
     class Meta:
         model = Product
         fields = ['id', 'name', 'description', 'category',
-                  'related_products', 'Var', 'images']
+                  'related_products', 'Var', 'images', 'ratings','average_rating']
+
 # Product
+
+
+
+# Categories
+class CategoriesSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Categories
+        fields = '__all__'
+# Categories
+
+
+
+
 
 # CART
 class CartItemSerializer(serializers.ModelSerializer):

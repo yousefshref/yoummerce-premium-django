@@ -1,6 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
-
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 # STATES
 class State(models.Model):
@@ -21,11 +21,31 @@ class Product(models.Model):
     related_products = models.ManyToManyField('self', blank=True, null=True)
     date_created = models.DateTimeField(auto_now_add=True, null=True, blank=True)
 
+    ratings = models.ManyToManyField(User, through='ProductRating', related_name='rated_products')
+
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
 
     def __str__(self):
         return f'{self.id} || {str(self.name)}'
+
+
+class ProductRating(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    rating = models.FloatField(default=0, null=True, blank=True, validators=[MinValueValidator(0), MaxValueValidator(5)])
+    comment = models.TextField(max_length=100, null=True, blank=True) 
+    reply =  models.TextField(max_length=100, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+
+    class Meta:
+        unique_together = ('product', 'user')
+
+    def __str__(self):
+        return f"{self.user.username} rated {self.product.name} {self.rating} stars"
+
+
+
 
 
 
@@ -34,6 +54,7 @@ class Var(models.Model):
         Product, on_delete=models.CASCADE, related_name='Var', null=True, blank=True)
     Var_name = models.CharField(max_length=50, blank=True)
     buy_price = models.IntegerField(null=True, blank=True,default=0)
+    befor_discount = models.IntegerField(null=True, blank=True,default=0)
     sell_price = models.IntegerField(null=True, blank=True,default=0)
     earning = models.IntegerField(null=True, blank=True,default=0)
     consumer_commission = models.IntegerField(null=True, blank=True,default=0)
@@ -102,7 +123,7 @@ class CartItem(models.Model):
         super().save(*args, **kwargs)
 # CART
 
-
+    
 # ORDER
 class Order(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)

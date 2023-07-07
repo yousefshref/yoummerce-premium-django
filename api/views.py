@@ -7,15 +7,15 @@ from .models import Product
 from .serializers import ProductSerializer
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from .models import Product,Cart, CartItem, Order, State,OrderItem
-from .serializers import ProductSerializer, CartSerializer,StateSerializer, CartItemSerializer, OrderSerializer, OrderItemSerializer, UserSerializerAll
+from .models import Product,Cart, CartItem, Order, State, OrderItem, Var, ProductRating
+from .serializers import ProductSerializer, CartSerializer,StateSerializer, ProductRatingSerializer, CartItemSerializer, OrderSerializer, OrderItemSerializer, UserSerializerAll
 from django.http import Http404
 from rest_framework import generics
 from rest_framework import views
 from django.utils import timezone
 from rest_framework import viewsets, status
 from django.db import transaction
-
+from django.db.models import OuterRef, Subquery
 
 # USER
 class UserDetailView(generics.RetrieveAPIView):
@@ -162,12 +162,32 @@ class CartItemView(views.APIView):
             return Response(serializer.errors)
 # CART
 
+
+
+# Categories
+from django.http import JsonResponse
+from .serializers import CategoriesSerializer
+from .models import Categories
+
+def categories_list_view(request):
+    categories = Categories.objects.all()
+    serializer = CategoriesSerializer(categories, many=True)
+    return JsonResponse(serializer.data, safe=False)
+# Categories
+
+
+
+
 # PRODUCT
 class ProductView(APIView):
     serializer_class = ProductSerializer
+
     def get(self, request, pk=None):
-        # Check if a search query is provided in the 'q' parameter
+        # Get the search query, category, min_sell_price, and max_sell_price from the request parameters
         search_query = request.GET.get('q', '')
+        category = request.GET.get('category', '')
+        min_sell_price = request.GET.get('min_sell_price', '')
+        max_sell_price = request.GET.get('max_sell_price', '')
 
         if pk is not None:
             # If a single ID is provided, retrieve that product
@@ -177,29 +197,64 @@ class ProductView(APIView):
                 return Response(serializer.data)
             except Product.DoesNotExist:
                 raise Http404
-        elif search_query:
-            # If a search query is provided, filter the products by name
-            products = Product.objects.filter(name__icontains=search_query)
-            serializer = ProductSerializer(products, many=True)
-            return Response(serializer.data)
         else:
-            # If no ID or search query is provided, retrieve all products and order by ID in descending order
-            ids = request.GET.get('ids', '')
-            if not ids:
-                products = Product.objects.order_by('-id')
-            else:
-                # If a comma-separated list of IDs is provided, retrieve those products
-                id_list = ids.split(',')
-                products = Product.objects.filter(pk__in=id_list).order_by('-id')
+            # If no ID is provided, filter the products by name, category, and sell price range
+            products = Product.objects.all()
+            if search_query:
+                products = products.filter(name__icontains=search_query)
+            if category:
+                products = products.filter(category__category__icontains=category)
+            if min_sell_price or max_sell_price:
+                # Use a subquery to filter products based on the sell_price field in the Var model
+                var_query = Var.objects.filter(product=OuterRef('pk'))
+                if min_sell_price:
+                    var_query = var_query.filter(sell_price__gte=min_sell_price)
+                if max_sell_price:
+                    var_query = var_query.filter(sell_price__lte=max_sell_price)
+                products = products.annotate(min_sell_price=Subquery(var_query.values('sell_price')[:1]))
+                products = products.annotate(max_sell_price=Subquery(var_query.values('sell_price').order_by('-sell_price')[:1]))
+                products = products.filter(min_sell_price__isnull=False, max_sell_price__isnull=False)
             serializer = ProductSerializer(products, many=True)
-            return Response(serializer.data)
+            return Response(serializer.data)    
         
-
     def get_object(self, pk):
         try:
             return Product.objects.get(pk=pk)
         except Product.DoesNotExist:
             raise Http404
+
+
+class ProductRatingView(APIView):
+    
+    def post(self, request, product_id, user_id, rating):
+        
+        try: 
+            product = Product.objects.get(pk=product_id)
+            user = User.objects.get(pk=user_id)
+            rating = int(rating)
+        except Product.DoesNotExist:
+            return Response({"error": "Product not found."}, status=status.HTTP_404_NOT_FOUND)
+            
+        except User.DoesNotExist:    
+            return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+        
+        except ValueError:
+            return Response({"error": "Rating must be an integer."}, status=status.HTTP_400_BAD_REQUEST)  
+            
+        product_rating, created = ProductRating.objects.get_or_create(
+            product=product, 
+            user=user
+        )       
+        product_rating.rating = rating
+        product_rating.save()  
+            
+        comment = request.data.get("comment")  
+        if comment:
+            product_rating.comment = comment
+            product_rating.save()  
+              
+        serializer = ProductRatingSerializer(product_rating)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 # PRODUCT
 
 # Login
